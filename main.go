@@ -4,15 +4,10 @@ package main
 import (
 	"github.com/mvdan/xurls"
     "github.com/PuerkitoBio/goquery"
-//	"github.com/jeffail/gabs"
-//		"fmt"
         "io/ioutil"
-//        "log"
 		"errors"
-//		"time"
         "net/http"
 		"strings"
-//		"unicode/utf8"
 		"sync"
 		"net/url"
 		"math/rand"
@@ -32,6 +27,7 @@ func (self *hitRequest) Initialize() {
 	self.userAgent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.130 Safari/537.36"
 	self.method = "GET"
 }
+
 var targetUrl = "http://www.google.co.in/"
 var numOfSoldiers = 10
 var numOfBattalions = 5
@@ -87,10 +83,6 @@ func getLocalLinks(doc *goquery.Document, domain string)([]string){
 }
 //Finds the target 
 func findTarget()([]string){
-	
-//	var aurls []string
-//	aurls = append(aurls,targetUrl)
-//	return aurls
 
 	hr, err := hit(hitRequest{url: targetUrl})	
 	
@@ -165,36 +157,6 @@ func kill(ht hitRequest,messages chan int, wg *sync.WaitGroup, numSoldier int, n
 		messages <- numSoldier
 }
 
-
-func getInstructions(done chan bool, str string){
-        client := &http.Client{}
-
-        req, err := http.NewRequest("GET", "http://httpbin.org/user-agent", nil)
-    
-	    if err != nil {
-				done <- true
-				return
-        }
-
-        req.Header.Set("User-Agent", "ToInsanity")
-
-        resp, err := client.Do(req)
-        if err != nil {
-				done <- true
-				return
-        }
-
-        defer resp.Body.Close()
-        body, err := ioutil.ReadAll(resp.Body)
-        if err != nil {
-				done <- true
-				return
-        }
-		body = body
-		done <- true
-}
-
-
 func ShuffleStringSlice(a []string) {
     for i := range a {
         j := rand.Intn(i + 1)
@@ -219,4 +181,3 @@ func RemoveDuplicatesStringSlice(xs *[]string) {
 	}
 	*xs = (*xs)[:j]
 }
-
