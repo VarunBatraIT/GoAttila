@@ -9,10 +9,8 @@ import (
 	"net/url"
 	"strings"
 	"sync"
-
-	"github.com/PuerkitoBio/goquery"
 	"github.com/cheggaaa/pb"
-	"github.com/mvdan/xurls"
+	"golang.org/x/net/html"
 )
 
 type hitResponse struct {
@@ -52,6 +50,20 @@ func main() {
 	missionIssuedWg.Wait()
 	bar.FinishPrint("Victory!")
 }
+// Helper function to pull the href attribute from a Token
+func getHref(t html.Token) (ok bool, href string) {
+    // Iterate over all of the Token's attributes until we find an "href"
+    for _, a := range t.Attr {
+        if a.Key == "href" {
+            href = a.Val
+            ok = true
+        }
+    }
+
+    // "bare" return will return the variables (ok, href) as defined in
+    // the function definition
+    return
+}
 
 func deploy(ht hitRequest, missionIssuedWg *sync.WaitGroup) {
 	var deployWg sync.WaitGroup
@@ -62,43 +74,47 @@ func deploy(ht hitRequest, missionIssuedWg *sync.WaitGroup) {
 	deployWg.Wait()
 	missionIssuedWg.Done()
 }
-func getLocalLinks(doc *goquery.Document, domain string) []string {
-	u, _ := url.Parse(domain)
+func getLocalLinks(doc string, domain string) []string {
+	u,_:= url.Parse(domain)
 	host := u.Host
 	var hrefs []string
-	doc.Find("a").Each(func(i int, s *goquery.Selection) {
-		link, linkExist := s.Attr("href")
-		if linkExist != false {
-			if link == "#" || link == "/" || link == "" || strings.Index(link, "#") == 0 {
-				return
+	z := html.NewTokenizer(strings.NewReader(doc))
+
+	for {
+		tt := z.Next()
+
+		switch {
+		case tt == html.ErrorToken:
+			// End of the document, we're done
+			return hrefs
+		case tt == html.StartTagToken:
+			t := z.Token()
+			isAnchor := t.Data == "a"
+			if !isAnchor {
+				continue
 			}
-			if strings.Index(link, "/") == 0 {
-				link = domain + link
+			// Extract the href value, if there is one
+            ok, href := getHref(t)
+            if !ok {
+                continue
+            }
+			if strings.Index(href,"/") == 0 {
+				href = domain + href
 			}
-			u, _ = url.Parse(link)
-			if host == u.Host {
-				hrefs = append(hrefs, link)
+			urlParsed,_ := url.Parse(href)
+			if  urlParsed.Host == host{
+				hrefs = append(hrefs,href)				
 			}
 		}
-	})
+	}
 	return hrefs
-
 }
 
 //Finds the target
 func findTarget() []string {
-
-	hr, err := hit(hitRequest{url: targetUrl})
-
-	doc, err := goquery.NewDocumentFromReader(strings.NewReader(hr.body))
-
-	hrefsFromBody := xurls.Relaxed.FindAllString(doc.Text(), -1)
-	if err != nil {
-		//		fmt.Println(doc)
-	}
+	hr, _ := hit(hitRequest{url: targetUrl})
 	domain := targetUrl
-	hrefsFromDoc := getLocalLinks(doc, domain)
-	hrefs := append(hrefsFromBody, hrefsFromDoc...)
+	hrefs := getLocalLinks(hr.body, domain)
 
 	//append original to the list
 	hrefs = append(hrefs, domain)
