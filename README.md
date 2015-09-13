@@ -12,3 +12,6 @@ Currently codes have configuration in the proejct. Will be implementing settings
 * Set number of battalion
 * Bund and Run "go run main.go"
 
+#Not ab load testing
+
+It doesn't give failed requests or anything. Currently Idea is to observe CPU usage, memory usage by application and lag between master and slave
