@@ -1,4 +1,4 @@
-// ToInsanity project main.go
+// Attila Go project main.go
 package main
 
 import (
@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"strings"
 	"sync"
+
 	"github.com/cheggaaa/pb"
 	"golang.org/x/net/html"
 )
@@ -22,17 +23,20 @@ type hitRequest struct {
 	userAgent string
 	params    string
 	method    string
+	needResponse bool
 }
 
 func (self *hitRequest) Initialize() {
 	self.userAgent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.130 Safari/537.36"
 	self.method = "GET"
+	self.needResponse = false
+	
 }
 
 var targetUrl = "http://www.google.co.in/"
-var numOfSoldiers = 10
-var numOfBattalions = 5
-var numOfTargets = 1
+var numOfSoldiers = 100
+var numOfBattalions = 500
+var numOfTargets = 3
 var bar *pb.ProgressBar
 
 func main() {
@@ -50,19 +54,20 @@ func main() {
 	missionIssuedWg.Wait()
 	bar.FinishPrint("Victory!")
 }
+
 // Helper function to pull the href attribute from a Token
 func getHref(t html.Token) (ok bool, href string) {
-    // Iterate over all of the Token's attributes until we find an "href"
-    for _, a := range t.Attr {
-        if a.Key == "href" {
-            href = a.Val
-            ok = true
-        }
-    }
+	// Iterate over all of the Token's attributes until we find an "href"
+	for _, a := range t.Attr {
+		if a.Key == "href" {
+			href = a.Val
+			ok = true
+		}
+	}
 
-    // "bare" return will return the variables (ok, href) as defined in
-    // the function definition
-    return
+	// "bare" return will return the variables (ok, href) as defined in
+	// the function definition
+	return
 }
 
 func deploy(ht hitRequest, missionIssuedWg *sync.WaitGroup) {
@@ -75,7 +80,7 @@ func deploy(ht hitRequest, missionIssuedWg *sync.WaitGroup) {
 	missionIssuedWg.Done()
 }
 func getLocalLinks(doc string, domain string) []string {
-	u,_:= url.Parse(domain)
+	u, _ := url.Parse(domain)
 	host := u.Host
 	var hrefs []string
 	z := html.NewTokenizer(strings.NewReader(doc))
@@ -94,16 +99,16 @@ func getLocalLinks(doc string, domain string) []string {
 				continue
 			}
 			// Extract the href value, if there is one
-            ok, href := getHref(t)
-            if !ok {
-                continue
-            }
-			if strings.Index(href,"/") == 0 {
+			ok, href := getHref(t)
+			if !ok {
+				continue
+			}
+			if strings.Index(href, "/") == 0 {
 				href = domain + href
 			}
-			urlParsed,_ := url.Parse(href)
-			if  urlParsed.Host == host{
-				hrefs = append(hrefs,href)				
+			urlParsed, _ := url.Parse(href)
+			if urlParsed.Host == host {
+				hrefs = append(hrefs, href)
 			}
 		}
 	}
@@ -112,7 +117,7 @@ func getLocalLinks(doc string, domain string) []string {
 
 //Finds the target
 func findTarget() []string {
-	hr, _ := hit(hitRequest{url: targetUrl})
+	hr, _ := hit(hitRequest{url: targetUrl, needResponse:true})
 	domain := targetUrl
 	hrefs := getLocalLinks(hr.body, domain)
 
@@ -149,6 +154,10 @@ func hit(ht hitRequest) (hitResponse, error) {
 		return hitResponse{}, errors.New("Can't hit it")
 	}
 	defer resp.Body.Close()
+	
+	if ht.needResponse == false {
+		return hitResponse{}, nil		
+	}
 	body, err := ioutil.ReadAll(resp.Body)
 
 	if err != nil {
